@@ -403,25 +403,7 @@ def margin_balance(symbol):
 
 
 if __name__ == '__main__':
-    import time
-    call_url = 'https://sc.ftqq.com/SCU13868Te3a23c4efa4dc26084d9efa9ab100e7559e088f342df1.send?text={}价格回升了&desp={}价格回升了'
-    message = 'coin:{}, id:{}, open:{}, close:{}, high:{}, low:{}, count:{}, vol:{}'
-    coins = {u'ethusdt': 912, u'bchusdt': 1261}
-    while True:
-        for key in coins.keys():
-            result = get_kline(key, u'1min', 1)
-            if result[u'status'] == 'fail':
-                continue
-
-            for t in result[u'data']:
-
-                print message.format(
-                    key, t[u'id'], t[u'open'], t[u'close'], t[u'high'], t[u'low'], t[u'count'], t[u'vol']
-                )
-                if t[u'high'] > coins[key]:
-                    requests.get(call_url.format(key, key))
-                time.sleep(.3)
-
+    pass
 
 
 

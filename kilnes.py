@@ -5,7 +5,19 @@ import uuid
 import json
 import time
 import StringIO
+import threading
 from websocket import create_connection
+from db.MySqlConn import Mysql
+
+
+sql = """INSERT INTO {} (id, open, close, low, high, amount, vol, count) VALUES (%s, %s, %s, %s, %s, %s, %s, %s) ON DUPLICATE KEY UPDATE open=%s, close=%s, low=%s, high=%s, amount=%s, vol=%s, count=%s"""
+
+def save(item, symbol):
+    conn = Mysql()
+    print sql.format(symbol)
+    conn.insertOne(sql.format(symbol),
+           [item['id'], item['open'], item['close'], item['low'], item['high'], item['amount'],item['vol'], item['count'],
+            item['open'], item['close'], item['low'], item['high'], item['amount'], item['vol'], item['count']])
 
 def createConnection(tradeId, symbol):
     print '{}, {} create connection'.format(tradeId, symbol)
@@ -31,9 +43,13 @@ def main(symbol):
                 ts = result[8:21]
                 pong = '{"pong":' + ts + '}'
                 ws.send(pong)
-                print 'pong'
             else:
                 print(result)
+                item = json.loads(result)
+                if 'tick' in item:
+                    item = item['tick']
+                    save(item, symbol)
+
         except Exception as e:
             print('exception: {}'.format(e))
             ws = createConnection(tradeId, symbol)
@@ -44,7 +60,6 @@ def history(symbol):
     tradeStr = '{{"id": "{}", "req": "market.{}.kline.1min", "from": {}, "to": {}}}'
     start = 1511845180
     ws.send(tradeStr.format(tradeId, symbol, 1511845180, 1511845180+60*240))
-    # sql = "insert into {} (id, open, close, low, high, amount, vol, symbol) values (%s, %s, %s, %s, %s, %s, %s, %s, '')"
     index = 1
     while True:
         try:
@@ -56,20 +71,22 @@ def history(symbol):
                 ts = result[8:21]
                 pong = '{"pong":' + ts + '}'
                 ws.send(pong)
-                ws.send(tradeStr.format(tradeId, symbol, start+60*240*index+1, start+60*240*(index+1)))
+                # ws.send(tradeStr.format(tradeId, symbol, start+60*240*index+1, start+60*240*(index+1)))
             else:
-                print(result)
-                ws.send(tradeStr.format(tradeId, symbol, start+60*240*index+1, start+60*240*(index+1)))
+                item = json.loads(result)
+                conn.insertOne(sql.format(symbol), [item['id'], item['open'], item['close'], item['low'], item['high'], item['amount'], item['vol'], item['count'],
+                                     item['open'], item['close'], item['low'], item['high'], item['amount'], item['vol'], item['count']])
+                # ws.send(tradeStr.format(tradeId, symbol, start+60*240*index+1, start+60*240*(index+1)))
             index += 1
-            time.sleep(1)
+            time.sleep(.5)
         except Exception as e:
             print('exception: {}'.format(e))
             ws = createConnection()
 
 if __name__ == '__main__':
-    import threading
     thread_list = []
     symbols = ['btcusdt','bchusdt','ethusdt','etcusdt','ltcusdt','eosusdt','xrpusdt','omgusdt','dashusdt','zecusdt','adausdt','ctxcusdt','actusdt','btmusdt','btsusdt','ontusdt','iostusdt','htusdt','trxusdt','dtausdt','neousdt','qtumusdt','elausdt','venusdt','thetausdt','sntusdt','zilusdt','xemusdt','smtusdt','nasusdt','ruffusdt','hsrusdt','letusdt','mdsusdt','storjusdt','elfusdt','itcusdt','cvcusdt','gntusdt']
+
     for symbol in symbols:
         thread_list.append(threading.Thread(target=main, args=(symbol,)))
     for t in thread_list:
